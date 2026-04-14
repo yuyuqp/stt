@@ -300,13 +300,13 @@ class TranscriptionScreen(Screen):
                     def set_path():
                         self.query_one("#audio_input", Input).value = path
 
-                    self.call_from_thread(set_path)
+                    self.app.call_from_thread(set_path)
             except Exception as e:
 
                 def show_error():
                     self.update_status(f"Error: {e}")
 
-                self.call_from_thread(show_error)
+                self.app.call_from_thread(show_error)
 
         threading.Thread(target=browse_worker, daemon=True).start()
 
@@ -344,7 +344,7 @@ class TranscriptionScreen(Screen):
         def transcribe_worker():
             try:
                 self.transcribing = True
-                self.call_from_thread(
+                self.app.call_from_thread(
                     lambda: self.update_status("Preparing model…")
                 )
 
@@ -371,7 +371,7 @@ class TranscriptionScreen(Screen):
                 self.post_message(TranscriptionComplete(result.text, info_str))
 
                 if save_after:
-                    self.call_from_thread(self.action_save)
+                    self.app.call_from_thread(self.action_save)
 
             except Exception as e:
                 self.post_message(TranscriptionError(str(e)))
