@@ -2,15 +2,24 @@
 
 import argparse
 
+from stt.core.subtitle import SUPPORTED_FORMATS
+
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build the argument parser.
+    """Build the argument parser for the transcription command.
 
     Returns:
         ArgumentParser configured for STT application
     """
     p = argparse.ArgumentParser(
-        description="Transcribe audio with faster-whisper (optionally priming CUDA DLL paths on Windows)."
+        prog="stt",
+        description=(
+            "Speech-to-text transcription and subtitle conversion.\n\n"
+            "Subcommands:\n"
+            "  convert    Convert subtitle files between formats (srt, vtt, txt)\n\n"
+            "Run without a subcommand to transcribe an audio file or launch the UI."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p.add_argument(
         "audio",
@@ -105,4 +114,43 @@ def build_parser() -> argparse.ArgumentParser:
         help="Launch the Terminal User Interface (TUI)",
     )
 
+    return p
+
+
+def build_convert_parser() -> argparse.ArgumentParser:
+    """Build the argument parser for the ``convert`` subcommand.
+
+    Returns:
+        ArgumentParser for subtitle conversion
+    """
+    p = argparse.ArgumentParser(
+        prog="stt convert",
+        description=(
+            "Convert a subtitle file between formats.\n\n"
+            "Supported input formats : .srt, .vtt\n"
+            "Supported output formats: srt, vtt, txt (plain text without timestamps)"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p.add_argument(
+        "input",
+        help="Path to the source subtitle file (.srt or .vtt)",
+    )
+    p.add_argument(
+        "--to",
+        dest="output_format",
+        required=True,
+        choices=SUPPORTED_FORMATS,
+        metavar="FORMAT",
+        help=f"Target format. Choices: {', '.join(SUPPORTED_FORMATS)}",
+    )
+    p.add_argument(
+        "-o",
+        "--output",
+        default=None,
+        help=(
+            "Output file path.  When omitted the output is placed next to the "
+            "input file with the appropriate extension."
+        ),
+    )
     return p

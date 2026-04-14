@@ -1,12 +1,30 @@
 """Main entry point for STT application."""
 
+import sys
 from pathlib import Path
 
-from stt.cli import build_parser
+from stt.cli import build_convert_parser, build_parser
 from stt.core.transcriber import Transcriber, TranscriptionConfig
 from stt.core.utils.windows_cuda import setup_windows_cuda_dlls
 from stt.ui.gui import launch_gui
 from stt.ui.tui import launch_tui
+
+
+def _run_convert(argv: list[str]) -> int:
+    """Handle the ``convert`` subcommand."""
+    from stt.core.subtitle import convert_file
+
+    args = build_convert_parser().parse_args(argv)
+    try:
+        output = convert_file(args.input, args.output_format, args.output)
+        print(f"Converted: {args.input}  →  {output}")
+        return 0
+    except (FileNotFoundError, ValueError) as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    except Exception as e:
+        print(f"Unexpected error: {e}", file=sys.stderr)
+        return 1
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -18,6 +36,14 @@ def main(argv: list[str] | None = None) -> int:
     Returns:
         Exit code
     """
+    if argv is None:
+        argv = sys.argv[1:]
+
+    # Dispatch the ``convert`` subcommand before the main parser so that the
+    # word "convert" is never mistaken for an audio file path.
+    if argv and argv[0] == "convert":
+        return _run_convert(argv[1:])
+
     args = build_parser().parse_args(argv)
 
     # Prepare defaults dict for UI modes

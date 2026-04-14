@@ -48,12 +48,365 @@ class StatusBox(Static):
         self.update("Ready")
 
 
+# ---------------------------------------------------------------------------
+# Home screen
+# ---------------------------------------------------------------------------
+
+
+class HomeScreen(Screen):
+    """Main menu – lets the user choose between features."""
+
+    BINDINGS = [
+        Binding("ctrl+c", "quit", "Quit", show=True),
+    ]
+
+    CSS = """
+    Screen {
+        layout: vertical;
+        align: center middle;
+        background: $surface;
+        color: $text;
+    }
+
+    #home_title {
+        width: auto;
+        height: auto;
+        border: solid $accent;
+        text-align: center;
+        padding: 1 4;
+        background: $boost;
+        margin-bottom: 2;
+    }
+
+    #home_buttons {
+        width: auto;
+        height: auto;
+        layout: vertical;
+        align: center middle;
+    }
+
+    #home_buttons Button {
+        width: 36;
+        margin-bottom: 1;
+    }
+    """
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="home_buttons"):
+            yield Label("STT – faster-whisper", id="home_title")
+            yield Button("🎙  Transcribe Audio", id="btn_transcribe", variant="primary")
+            yield Button("📄  Convert Subtitles", id="btn_convert", variant="success")
+            yield Button("Quit", id="btn_quit", variant="error")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn_transcribe":
+            self.app.push_screen(TranscriptionScreen(defaults=self.app.defaults))
+        elif event.button.id == "btn_convert":
+            self.app.push_screen(SubtitleConversionScreen())
+        elif event.button.id == "btn_quit":
+            self.app.exit()
+
+    def action_quit(self) -> None:
+        self.app.exit()
+
+
+# ---------------------------------------------------------------------------
+# Subtitle conversion screen
+# ---------------------------------------------------------------------------
+
+
+class ConversionComplete(Message):
+    """Message sent when subtitle conversion completes."""
+
+    def __init__(self, output_path: str) -> None:
+        self.output_path = output_path
+        super().__init__()
+
+
+class ConversionError(Message):
+    """Message sent when subtitle conversion fails."""
+
+    def __init__(self, error: str) -> None:
+        self.error = error
+        super().__init__()
+
+
+class SubtitleConversionScreen(Screen):
+    """Screen for converting subtitle files between formats."""
+
+    BINDINGS = [
+        Binding("ctrl+c", "go_home", "Home", show=True),
+        Binding("escape", "go_home", "Home", show=True),
+    ]
+
+    CSS = """
+    Screen {
+        layout: vertical;
+        background: $surface;
+        color: $text;
+    }
+
+    #conv_title {
+        width: 1fr;
+        height: auto;
+        border: solid $accent;
+        text-align: center;
+        padding: 1;
+        background: $boost;
+    }
+
+    #conv_file_row {
+        width: 1fr;
+        height: auto;
+        padding: 1;
+    }
+
+    #conv_file_row Input {
+        width: 1fr;
+        margin: 0 1;
+    }
+
+    #conv_file_row Label {
+        width: auto;
+        height: 1;
+    }
+
+    #conv_file_row Button {
+        width: auto;
+        height: 1;
+    }
+
+    #conv_format_row {
+        width: 1fr;
+        height: auto;
+        padding: 1;
+        layout: horizontal;
+    }
+
+    #conv_format_row Label {
+        width: auto;
+        height: 1;
+        margin-right: 1;
+    }
+
+    #conv_format_row Select {
+        width: 20;
+    }
+
+    #conv_output_row {
+        width: 1fr;
+        height: auto;
+        padding: 1;
+    }
+
+    #conv_output_row Input {
+        width: 1fr;
+        margin: 0 1;
+    }
+
+    #conv_output_row Label {
+        width: auto;
+        height: 1;
+    }
+
+    #conv_button_row {
+        width: 1fr;
+        height: auto;
+        padding: 1;
+    }
+
+    #conv_button_row Button {
+        margin-right: 1;
+    }
+
+    #conv_status {
+        width: 1fr;
+        height: auto;
+        border: solid $success;
+        padding: 1;
+        text-align: center;
+        background: $panel;
+    }
+
+    #conv_detected {
+        width: 1fr;
+        height: auto;
+        padding: 0 1;
+        color: $text-muted;
+    }
+
+    #conv_preview {
+        width: 1fr;
+        height: 1fr;
+        border: solid $primary;
+    }
+    """
+
+    def compose(self) -> ComposeResult:
+        from stt.core.subtitle import SUPPORTED_FORMATS
+
+        with Vertical():
+            yield Label("Subtitle Converter", id="conv_title")
+
+            with Horizontal(id="conv_file_row"):
+                yield Label("Input file:", classes="label")
+                yield Input(
+                    id="conv_input",
+                    placeholder="Path to .srt or .vtt file",
+                    classes="input_field",
+                )
+                yield Button("Browse", id="conv_browse_btn")
+
+            yield Label("", id="conv_detected")
+
+            with Horizontal(id="conv_format_row"):
+                yield Label("Convert to:")
+                yield Select(
+                    [(f, f) for f in SUPPORTED_FORMATS],
+                    value=SUPPORTED_FORMATS[0],
+                    id="conv_format_select",
+                )
+
+            with Horizontal(id="conv_output_row"):
+                yield Label("Output file:", classes="label")
+                yield Input(
+                    id="conv_output",
+                    placeholder="Leave blank to auto-name",
+                    classes="input_field",
+                )
+
+            with Horizontal(id="conv_button_row"):
+                yield Button("Convert", id="conv_convert_btn", variant="primary")
+                yield Button("Clear", id="conv_clear_btn")
+                yield Button("← Home", id="conv_home_btn")
+
+            yield StatusBox("Ready", id="conv_status")
+
+            yield Label("Preview:")
+            yield TextArea(id="conv_preview", read_only=True)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "conv_browse_btn":
+            self._browse_input()
+        elif event.button.id == "conv_convert_btn":
+            self._do_convert()
+        elif event.button.id == "conv_clear_btn":
+            self._clear()
+        elif event.button.id == "conv_home_btn":
+            self.action_go_home()
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        if event.input.id == "conv_input":
+            self._update_detected_label(event.value.strip())
+
+    def _update_detected_label(self, path: str) -> None:
+        from stt.core.subtitle import detect_format
+
+        detected = self.query_one("#conv_detected", Label)
+        if path and Path(path).exists():
+            fmt = detect_format(path)
+            detected.update(f"Detected format: {fmt}")
+        else:
+            detected.update("")
+
+    def _browse_input(self) -> None:
+        def browse_worker():
+            try:
+                import tkinter as tk
+                from tkinter import filedialog
+
+                root = tk.Tk()
+                root.withdraw()
+                root.wm_attributes("-topmost", 1)
+
+                path = filedialog.askopenfilename(
+                    title="Select subtitle file",
+                    filetypes=[
+                        ("Subtitle files", "*.srt *.vtt"),
+                        ("SRT", "*.srt"),
+                        ("VTT", "*.vtt"),
+                        ("All files", "*.*"),
+                    ],
+                )
+                root.destroy()
+
+                if path:
+                    def set_path():
+                        self.query_one("#conv_input", Input).value = path
+                        self._update_detected_label(path)
+
+                    self.app.call_from_thread(set_path)
+            except Exception as e:
+                def show_err():
+                    self._set_status(f"Browse error: {e}")
+
+                self.app.call_from_thread(show_err)
+
+        threading.Thread(target=browse_worker, daemon=True).start()
+
+    def _do_convert(self) -> None:
+        from stt.core.subtitle import convert_file
+
+        input_path = self.query_one("#conv_input", Input).value.strip()
+        output_path = self.query_one("#conv_output", Input).value.strip() or None
+        fmt = self.query_one("#conv_format_select", Select).value
+
+        if not input_path:
+            self._set_status("Error: Select an input file")
+            return
+
+        if not Path(input_path).exists():
+            self._set_status("Error: Input file not found")
+            return
+
+        def worker():
+            try:
+                self.app.call_from_thread(lambda: self._set_status("Converting…"))
+                result_path = convert_file(input_path, fmt, output_path)
+                preview_text = result_path.read_text(encoding="utf-8")
+                self.post_message(ConversionComplete(str(result_path)))
+
+                def update_preview() -> None:
+                    self.query_one("#conv_preview", TextArea).text = preview_text
+
+                self.app.call_from_thread(update_preview)
+            except Exception as e:
+                self.post_message(ConversionError(str(e)))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _clear(self) -> None:
+        self.query_one("#conv_input", Input).value = ""
+        self.query_one("#conv_output", Input).value = ""
+        self.query_one("#conv_preview", TextArea).text = ""
+        self.query_one("#conv_detected", Label).update("")
+        self._set_status("Cleared")
+
+    def on_conversion_complete(self, message: ConversionComplete) -> None:
+        self._set_status(f"Done → {message.output_path}")
+
+    def on_conversion_error(self, message: ConversionError) -> None:
+        self._set_status(f"Error: {message.error}")
+
+    def _set_status(self, text: str) -> None:
+        self.query_one("#conv_status", StatusBox).update(text)
+
+    def action_go_home(self) -> None:
+        self.app.pop_screen()
+
+
+# ---------------------------------------------------------------------------
+# Transcription screen (unchanged behaviour, back-button added)
+# ---------------------------------------------------------------------------
+
+
 class TranscriptionScreen(Screen):
     """Main transcription interface."""
 
     BINDINGS = [
         Binding("ctrl+c", "quit", "Quit", show=True),
         Binding("ctrl+s", "save", "Save", show=True),
+        Binding("escape", "go_home", "Home", show=True),
     ]
 
     CSS = """
@@ -248,6 +601,7 @@ class TranscriptionScreen(Screen):
                 )
                 yield Button("Save", id="save_btn", variant="warning")
                 yield Button("Clear", id="clear_btn")
+                yield Button("← Home", id="home_btn")
 
             # Status
             yield StatusBox("Ready", id="status")
@@ -272,6 +626,8 @@ class TranscriptionScreen(Screen):
             self.action_save()
         elif event.button.id == "clear_btn":
             self.action_clear()
+        elif event.button.id == "home_btn":
+            self.action_go_home()
 
     def action_browse(self) -> None:
         """Open file browser."""
@@ -452,6 +808,10 @@ class TranscriptionScreen(Screen):
         """Quit the application."""
         self.app.exit()
 
+    def action_go_home(self) -> None:
+        """Return to the home screen."""
+        self.app.pop_screen()
+
 
 class STTApp(App):
     """Main STT application."""
@@ -467,7 +827,7 @@ class STTApp(App):
     def on_mount(self) -> None:
         """Initialize the app."""
         self.title = "STT (faster-whisper)"
-        self.push_screen(TranscriptionScreen(defaults=self.defaults))
+        self.push_screen(HomeScreen())
 
     def action_quit(self) -> None:
         """Quit the application."""

@@ -28,24 +28,232 @@ except Exception:
     DND_AVAILABLE = False
 
 
-def launch_gui(
-    defaults: dict[str, Any] | None = None,
-) -> int:
-    """Launch the Tkinter GUI.
+# ---------------------------------------------------------------------------
+# Subtitle Conversion window
+# ---------------------------------------------------------------------------
 
-    Args:
-        defaults: Default configuration values
 
-    Returns:
-        Exit code
-    """
-    if defaults is None:
-        defaults = {}
+def _open_subtitle_converter(parent: tk.Misc) -> None:
+    """Open the subtitle converter as a separate Toplevel window."""
+    from stt.core.subtitle import SUPPORTED_FORMATS, convert_file, detect_format
 
-    root = TkBase()
-    root.title("STT (faster-whisper)")
-    root.minsize(720, 520)
+    win = tk.Toplevel(parent)
+    win.title("Subtitle Converter")
+    win.minsize(640, 480)
+    win.columnconfigure(0, weight=1)
 
+    # --- Input file row ---
+    file_frame = ttk.LabelFrame(win, text="Input file", padding=8)
+    file_frame.grid(row=0, column=0, sticky="ew", padx=12, pady=(12, 4))
+    file_frame.columnconfigure(1, weight=1)
+
+    input_var = tk.StringVar()
+    detected_var = tk.StringVar(value="Detected format: —")
+
+    ttk.Label(file_frame, text="Path:").grid(row=0, column=0, sticky="w")
+    input_entry = ttk.Entry(file_frame, textvariable=input_var)
+    input_entry.grid(row=0, column=1, sticky="ew", padx=(6, 6))
+
+    def browse_input() -> None:
+        path = filedialog.askopenfilename(
+            parent=win,
+            title="Select subtitle file",
+            filetypes=[
+                ("Subtitle files", "*.srt *.vtt"),
+                ("SRT", "*.srt"),
+                ("VTT", "*.vtt"),
+                ("All files", "*.*"),
+            ],
+        )
+        if path:
+            input_var.set(path)
+            _refresh_detected()
+
+    ttk.Button(file_frame, text="Browse…", command=browse_input).grid(
+        row=0, column=2, sticky="e"
+    )
+    ttk.Label(file_frame, textvariable=detected_var, foreground="gray").grid(
+        row=1, column=0, columnspan=3, sticky="w", pady=(4, 0)
+    )
+
+    def _refresh_detected(*_: Any) -> None:
+        path = input_var.get().strip()
+        if path and Path(path).exists():
+            fmt = detect_format(path)
+            detected_var.set(f"Detected format: {fmt}")
+        else:
+            detected_var.set("Detected format: —")
+
+    input_var.trace_add("write", _refresh_detected)
+
+    # --- Conversion options ---
+    opts_frame = ttk.LabelFrame(win, text="Conversion options", padding=8)
+    opts_frame.grid(row=1, column=0, sticky="ew", padx=12, pady=4)
+
+    format_var = tk.StringVar(value=SUPPORTED_FORMATS[0])
+    ttk.Label(opts_frame, text="Convert to:").grid(row=0, column=0, sticky="w")
+    fmt_box = ttk.Combobox(
+        opts_frame,
+        textvariable=format_var,
+        values=list(SUPPORTED_FORMATS),
+        state="readonly",
+        width=8,
+    )
+    fmt_box.grid(row=0, column=1, sticky="w", padx=(6, 0))
+
+    # --- Output path ---
+    out_frame = ttk.LabelFrame(win, text="Output file (optional)", padding=8)
+    out_frame.grid(row=2, column=0, sticky="ew", padx=12, pady=4)
+    out_frame.columnconfigure(1, weight=1)
+
+    output_var = tk.StringVar()
+    ttk.Label(out_frame, text="Path:").grid(row=0, column=0, sticky="w")
+    ttk.Entry(out_frame, textvariable=output_var).grid(
+        row=0, column=1, sticky="ew", padx=(6, 6)
+    )
+
+    def browse_output() -> None:
+        fmt = format_var.get()
+        path = filedialog.asksaveasfilename(
+            parent=win,
+            title="Save converted subtitle",
+            defaultextension=f".{fmt}",
+            filetypes=[
+                (fmt.upper(), f"*.{fmt}"),
+                ("All files", "*.*"),
+            ],
+        )
+        if path:
+            output_var.set(path)
+
+    ttk.Button(out_frame, text="Browse…", command=browse_output).grid(
+        row=0, column=2, sticky="e"
+    )
+    ttk.Label(out_frame, text="Leave blank to auto-name beside the input file", foreground="gray").grid(
+        row=1, column=0, columnspan=3, sticky="w", pady=(4, 0)
+    )
+
+    # --- Status / action ---
+    status_var = tk.StringVar(value="Ready")
+    ttk.Label(win, textvariable=status_var).grid(
+        row=3, column=0, sticky="w", padx=12, pady=(4, 0)
+    )
+
+    btn_frame = ttk.Frame(win)
+    btn_frame.grid(row=4, column=0, sticky="ew", padx=12, pady=4)
+
+    def do_convert() -> None:
+        src = input_var.get().strip()
+        dst = output_var.get().strip() or None
+        fmt = format_var.get()
+
+        if not src:
+            messagebox.showwarning("No input", "Choose a subtitle file first.", parent=win)
+            return
+        if not Path(src).exists():
+            messagebox.showerror("File not found", f"Input file not found:\n{src}", parent=win)
+            return
+
+        status_var.set("Converting…")
+        win.update_idletasks()
+
+        def worker() -> None:
+            try:
+                out_path = convert_file(src, fmt, dst)
+                preview = out_path.read_text(encoding="utf-8")
+
+                def finish() -> None:
+                    status_var.set(f"Done → {out_path}")
+                    preview_text.delete("1.0", "end")
+                    preview_text.insert("1.0", preview)
+
+                win.after(0, finish)
+            except Exception as exc:
+                err = str(exc)
+
+                def show_err() -> None:
+                    status_var.set("Error")
+                    messagebox.showerror("Conversion failed", err, parent=win)
+
+                win.after(0, show_err)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    ttk.Button(btn_frame, text="Convert", command=do_convert).grid(row=0, column=0)
+    ttk.Button(btn_frame, text="Close", command=win.destroy).grid(
+        row=0, column=1, padx=(8, 0)
+    )
+
+    # --- Preview ---
+    preview_frame = ttk.LabelFrame(win, text="Preview", padding=8)
+    preview_frame.grid(row=5, column=0, sticky="nsew", padx=12, pady=(4, 12))
+    preview_frame.columnconfigure(0, weight=1)
+    preview_frame.rowconfigure(0, weight=1)
+    win.rowconfigure(5, weight=1)
+
+    preview_text = tk.Text(preview_frame, wrap="word", state="normal")
+    preview_text.grid(row=0, column=0, sticky="nsew")
+    scroll = ttk.Scrollbar(preview_frame, orient="vertical", command=preview_text.yview)
+    scroll.grid(row=0, column=1, sticky="ns")
+    preview_text.configure(yscrollcommand=scroll.set)
+
+
+# ---------------------------------------------------------------------------
+# Home window
+# ---------------------------------------------------------------------------
+
+
+def _build_home(root: tk.Misc, defaults: dict[str, Any]) -> None:
+    """Build the home screen widgets inside *root*."""
+    root.columnconfigure(0, weight=1)
+
+    ttk.Label(
+        root,
+        text="STT – faster-whisper",
+        font=("TkDefaultFont", 16, "bold"),
+        anchor="center",
+    ).grid(row=0, column=0, pady=(24, 4), sticky="ew")
+
+    ttk.Label(
+        root,
+        text="Select a feature to get started",
+        anchor="center",
+        foreground="gray",
+    ).grid(row=1, column=0, sticky="ew", pady=(0, 24))
+
+    btn_frame = ttk.Frame(root)
+    btn_frame.grid(row=2, column=0)
+
+    def open_transcribe() -> None:
+        for widget in root.winfo_children():
+            widget.destroy()
+        _build_transcriber(root, defaults)
+
+    def open_convert() -> None:
+        _open_subtitle_converter(root)
+
+    ttk.Button(
+        btn_frame,
+        text="🎙  Transcribe Audio",
+        command=open_transcribe,
+        width=26,
+    ).grid(row=0, column=0, pady=6)
+
+    ttk.Button(
+        btn_frame,
+        text="📄  Convert Subtitles",
+        command=open_convert,
+        width=26,
+    ).grid(row=1, column=0, pady=6)
+
+
+# ---------------------------------------------------------------------------
+# Transcription UI (extracted from the original launch_gui)
+# ---------------------------------------------------------------------------
+
+
+def _build_transcriber(root: tk.Misc, defaults: dict[str, Any]) -> None:
+    """Build the transcription UI inside *root*."""
     transcriber = Transcriber()
 
     audio_var = tk.StringVar(value="")
@@ -61,6 +269,9 @@ def launch_gui(
         value=bool(defaults.get("condition_on_previous_text", True))
     )
 
+    # We need a reference to the actual Tk root to schedule after() calls
+    toplevel_root: tk.Tk = root.winfo_toplevel()  # type: ignore[assignment]
+
     def set_running(is_running: bool) -> None:
         running_var.set(is_running)
         state = "disabled" if is_running else "normal"
@@ -74,9 +285,8 @@ def launch_gui(
         status_var.set(text)
 
     def _safe_split_drop(data: str) -> list[str]:
-        # Tcl list parsing handles braces around paths with spaces.
         try:
-            return list(root.tk.splitlist(data))
+            return list(toplevel_root.tk.splitlist(data))
         except Exception:
             return [data]
 
@@ -115,7 +325,7 @@ def launch_gui(
 
         def worker() -> None:
             try:
-                root.after(0, lambda: (set_running(True), set_status("Preparing model…")))
+                toplevel_root.after(0, lambda: (set_running(True), set_status("Preparing model…")))
 
                 setup_windows_cuda_dlls(
                     cublas_bin=defaults.get("cublas_bin"),
@@ -145,7 +355,7 @@ def launch_gui(
                     if save_after:
                         on_save()
 
-                root.after(0, finish_ui)
+                toplevel_root.after(0, finish_ui)
             except Exception as e:
                 err_msg = str(e)
 
@@ -154,7 +364,7 @@ def launch_gui(
                     set_status("Failed.")
                     messagebox.showerror("Transcription failed", err_msg)
 
-                root.after(0, show_error)
+                toplevel_root.after(0, show_error)
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -290,9 +500,35 @@ def launch_gui(
             save_btn.configure(
                 state="normal" if transcript_text.get("1.0", "end").strip() else "disabled"
             )
-        root.after(300, poll_save_state)
+        toplevel_root.after(300, poll_save_state)
 
     poll_save_state()
+
+
+# ---------------------------------------------------------------------------
+# Public launch function
+# ---------------------------------------------------------------------------
+
+
+def launch_gui(
+    defaults: dict[str, Any] | None = None,
+) -> int:
+    """Launch the Tkinter GUI.
+
+    Args:
+        defaults: Default configuration values
+
+    Returns:
+        Exit code
+    """
+    if defaults is None:
+        defaults = {}
+
+    root = TkBase()
+    root.title("STT (faster-whisper)")
+    root.minsize(720, 520)
+
+    _build_home(root, defaults)
 
     root.mainloop()
     return 0
