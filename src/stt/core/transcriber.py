@@ -20,6 +20,7 @@ class TranscriptionConfig(NamedTuple):
     compute_type: str = "float16"
     beam_size: int = 5
     vad_filter: bool = True
+    condition_on_previous_text: bool = True
 
 
 class Transcriber:
@@ -69,6 +70,7 @@ class Transcriber:
             audio_path,
             beam_size=config.beam_size,
             vad_filter=config.vad_filter,
+            condition_on_previous_text=config.condition_on_previous_text,
         )
 
         # Format output
@@ -118,6 +120,7 @@ class Transcriber:
             audio_path,
             beam_size=config.beam_size,
             vad_filter=config.vad_filter,
+            condition_on_previous_text=config.condition_on_previous_text,
         )
 
         segments_list = [

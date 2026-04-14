@@ -57,6 +57,9 @@ def launch_gui(
     compute_var = tk.StringVar(value=str(defaults.get("compute_type", "float16")))
     beam_var = tk.IntVar(value=int(defaults.get("beam_size", 5)))
     vad_var = tk.BooleanVar(value=bool(defaults.get("vad_filter", True)))
+    condition_var = tk.BooleanVar(
+        value=bool(defaults.get("condition_on_previous_text", True))
+    )
 
     def set_running(is_running: bool) -> None:
         running_var.set(is_running)
@@ -127,6 +130,7 @@ def launch_gui(
                     compute_type=compute_var.get().strip(),
                     beam_size=int(beam_var.get()),
                     vad_filter=bool(vad_var.get()),
+                    condition_on_previous_text=bool(condition_var.get()),
                 )
 
                 result = transcriber.transcribe(audio_path, config)
@@ -251,6 +255,13 @@ def launch_gui(
 
     vad_check = ttk.Checkbutton(opts, text="VAD filter", variable=vad_var)
     vad_check.grid(row=1, column=0, columnspan=2, sticky="w", pady=(8, 0))
+
+    condition_check = ttk.Checkbutton(
+        opts,
+        text="Condition on previous text",
+        variable=condition_var,
+    )
+    condition_check.grid(row=1, column=2, columnspan=3, sticky="w", pady=(8, 0))
 
     actions = ttk.Frame(root, padding=(12, 0, 12, 12))
     actions.grid(row=2, column=0, sticky="ew")

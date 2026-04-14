@@ -27,6 +27,7 @@ def main(argv: list[str] | None = None) -> int:
         "compute_type": args.compute_type,
         "beam_size": args.beam_size,
         "vad_filter": args.vad_filter,
+        "condition_on_previous_text": args.condition_on_previous_text,
         "cublas_bin": args.cublas_bin,
         "cudnn_bin": args.cudnn_bin,
     }
@@ -54,6 +55,7 @@ def main(argv: list[str] | None = None) -> int:
         compute_type=args.compute_type,
         beam_size=args.beam_size,
         vad_filter=args.vad_filter,
+        condition_on_previous_text=args.condition_on_previous_text,
     )
 
     try:

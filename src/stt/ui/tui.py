@@ -233,6 +233,13 @@ class TranscriptionScreen(Screen):
                         id="vad_checkbox",
                     )
 
+                with Vertical():
+                    yield Label("Condition Prev Text:")
+                    yield Checkbox(
+                        value=self.defaults.get("condition_on_previous_text", True),
+                        id="condition_previous_text_checkbox",
+                    )
+
             # Action buttons
             with Horizontal(id="button_row"):
                 yield Button("Transcribe", id="transcribe_btn", variant="primary")
@@ -330,6 +337,9 @@ class TranscriptionScreen(Screen):
         compute = self.query_one("#compute_select", Select).value
         beam = int(self.query_one("#beam_select", Select).value)
         vad = self.query_one("#vad_checkbox", Checkbox).value
+        condition_on_previous_text = self.query_one(
+            "#condition_previous_text_checkbox", Checkbox
+        ).value
 
         def transcribe_worker():
             try:
@@ -351,6 +361,7 @@ class TranscriptionScreen(Screen):
                     compute_type=compute,
                     beam_size=beam,
                     vad_filter=vad,
+                    condition_on_previous_text=condition_on_previous_text,
                 )
 
                 result = self.transcriber.transcribe(audio_path, config)

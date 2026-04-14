@@ -59,6 +59,21 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_false",
     )
 
+    condition = p.add_mutually_exclusive_group()
+    condition.add_argument(
+        "--condition-on-previous-text",
+        dest="condition_on_previous_text",
+        action="store_true",
+        default=True,
+        help="Condition each segment on previously generated text (default: enabled)",
+    )
+    condition.add_argument(
+        "--no-condition-on-previous-text",
+        dest="condition_on_previous_text",
+        action="store_false",
+        help="Disable conditioning on previous text between segments",
+    )
+
     p.add_argument(
         "--cublas-bin",
         default=None,
