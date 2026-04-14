@@ -1,0 +1,153 @@
+# STT (faster-whisper) Application
+
+A speech-to-text application using the faster-whisper model. This application provides three interfaces: CLI, GUI (Tkinter), and TUI (Terminal User Interface with Textual).
+
+## Installation
+
+1. Create and activate the virtual environment:
+   ```bash
+   python -m venv env
+   .\env\Scripts\activate
+   ```
+
+2. Install dependencies:
+   ```bash
+   pip install faster-whisper textual
+   ```
+
+## Usage
+
+### Terminal User Interface (TUI) - NEW!
+
+Launch the interactive Textual TUI:
+
+```bash
+python fw_stt.py --tui
+```
+
+**Features:**
+- Interactive file browser and file path input
+- Real-time transcription progress
+- Configurable model selection (tiny, base, small, medium, large-v3)
+- Device selection (auto, cuda, cpu)
+- Compute type selection (float16, float32, int8)
+- Adjustable beam size (1-20)
+- VAD (Voice Activity Detection) filter toggle
+- Live transcript display
+- Save transcripts to file
+- Full keyboard navigation
+
+**Keyboard Shortcuts:**
+- `Ctrl+S` - Save transcript
+- `Ctrl+C` - Quit application
+
+### GUI (Graphical User Interface)
+
+Launch the Tkinter GUI:
+
+```bash
+python fw_stt.py --gui
+# or simply without arguments:
+python fw_stt.py
+```
+
+**Features:**
+- File browser with optional drag-and-drop support
+- Real-time configuration options
+- Transcript preview
+- Save functionality
+
+### Command-Line Interface (CLI)
+
+Transcribe audio directly from command line:
+
+```bash
+python fw_stt.py path/to/audio.mp3
+```
+
+**Arguments:**
+- `audio` - Path to audio file (omit to launch GUI)
+- `-o, --output` - Output transcript path (default: conversation.txt)
+- `--model` - Whisper model name (default: large-v3)
+- `--device` - Compute device: cuda, cpu, auto (default: cuda)
+- `--compute-type` - Compute type: float16, float32, int8 (default: float16)
+- `--beam-size` - Beam search size (default: 5)
+- `--vad-filter` - Enable VAD filter (default: enabled)
+- `--no-vad-filter` - Disable VAD filter
+
+### Windows CUDA Setup (Optional)
+
+For GPU acceleration on Windows with NVIDIA GPUs:
+
+```bash
+python fw_stt.py --gui --cublas-bin "path/to/cublas/bin" --cudnn-bin "path/to/cudnn/bin"
+```
+
+## Examples
+
+### TUI with GPU
+```bash
+python fw_stt.py --tui
+# Then select from the interface: model, device (cuda), and other settings
+```
+
+### CLI with specific settings
+```bash
+python fw_stt.py audio.wav --model medium --device cpu --beam-size 3
+```
+
+### GUI with large model on GPU
+```bash
+python fw_stt.py --gui
+# Select large-v3 model and cuda device in the interface
+```
+
+## Model Sizes
+
+- **tiny** - Fastest, lowest quality
+- **base** - Quick and decent quality
+- **small** - Balanced speed and quality
+- **medium** - Better quality, slower
+- **large-v3** - Best quality, slowest (recommended)
+
+## Output
+
+Transcripts are saved with timestamps in the format:
+```
+[  0.00 ->  2.34] First spoken segment
+[  2.34 ->  5.67] Second spoken segment
+Language: en | Probability: 0.99
+```
+
+## Requirements
+
+- Python 3.10+
+- faster-whisper
+- textual (for TUI)
+- tkinter (usually included with Python)
+- ffmpeg (for audio decoding)
+- NVIDIA GPU with CUDA support (optional, for GPU acceleration)
+
+## Troubleshooting
+
+### "Module not found" errors
+Ensure the virtual environment is activated and all dependencies are installed:
+```bash
+.\env\Scripts\activate
+pip install -r requirements.txt
+```
+
+### GPU not detected
+Check that NVIDIA drivers and CUDA toolkit are installed:
+```bash
+nvidia-smi
+```
+
+### Slow transcription
+- Use a smaller model (tiny, base)
+- Enable GPU acceleration (`--device cuda`)
+- Reduce beam size (`--beam-size 1`)
+
+## License
+
+See LICENSE file for details.

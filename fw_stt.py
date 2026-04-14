@@ -156,6 +156,11 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Launch the GUI (ignores the audio argument)",
     )
+    p.add_argument(
+        "--tui",
+        action="store_true",
+        help="Launch the Terminal User Interface (TUI)",
+    )
     return p
 
 
@@ -438,6 +443,10 @@ def _launch_gui(defaults: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
+
+    if args.tui:
+        from fw_stt_tui import launch_tui
+        return launch_tui()
 
     if args.gui or not args.audio:
         return _launch_gui(args)
