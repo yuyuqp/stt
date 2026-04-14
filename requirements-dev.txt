@@ -1,0 +1,29 @@
+# ============================================================
+# STT development dependencies
+# Extends requirements.txt with testing, linting, and formatting tools.
+# ============================================================
+#
+# Install:
+#   pip install -r requirements-dev.txt
+#
+# ============================================================
+
+# --- Runtime base ---
+-r requirements.txt
+
+# --- Testing ---
+pytest>=7.0
+pytest-cov>=4.0
+
+# --- Code formatting ---
+black>=23.0
+isort>=5.0
+
+# --- Linting ---
+flake8>=6.0
+
+# --- Type checking ---
+mypy>=1.0
+
+# --- Optional: drag-and-drop support in the GUI ---
+# tkinterdnd2>=0.3.0

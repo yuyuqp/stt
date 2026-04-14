@@ -1,0 +1,64 @@
+# ============================================================
+# STT runtime dependencies (pinned to verified-working versions)
+# ============================================================
+#
+# PyTorch / CUDA note:
+#   The torch wheels below are CPU-only on PyPI.
+#   For GPU inference (recommended), install torch separately first:
+#
+#     pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
+#
+#   Then install this file without letting pip re-install torch:
+#
+#     pip install -r requirements.txt --no-deps-for torch torchaudio
+#   or simply install the remaining packages manually.
+#
+# Windows CUDA DLL note:
+#   The nvidia-cublas-cu12 / nvidia-cudnn-cu12 wheels bundle the
+#   required DLLs on Windows so you don't need a separate CUDA install.
+# ============================================================
+
+# --- Inference engine ---
+faster-whisper==1.2.1
+ctranslate2==4.6.3
+
+# --- Terminal UI ---
+textual==8.2.3
+rich==14.2.0
+markdown-it-py==4.0.0
+mdit-py-plugins==0.5.0
+
+# --- Deep learning (see CUDA note above) ---
+torch==2.8.0
+torchaudio==2.8.0
+numpy==2.0.2
+
+# --- Model hub & tokenizers ---
+huggingface-hub==0.36.0
+tokenizers==0.22.2
+transformers==4.57.6
+safetensors==0.7.0
+
+# --- Audio I/O ---
+soundfile==0.13.1
+av==15.1.0
+
+# --- Subtitle support ---
+srt==2.1.0
+
+# --- Windows CUDA bundled DLLs (GPU only) ---
+nvidia-cublas-cu12==12.9.1.4
+nvidia-cudnn-cu12==9.17.1.4
+
+# --- General utilities ---
+certifi==2026.1.4
+charset-normalizer==3.4.4
+colorama==0.4.6
+filelock==3.20.3
+fsspec==2026.1.0
+idna==3.11
+packaging==25.0
+requests==2.32.5
+tqdm==4.67.1
+typing_extensions==4.15.0
+urllib3==2.6.3
