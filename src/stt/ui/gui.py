@@ -270,7 +270,7 @@ def _build_transcriber(root: tk.Misc, defaults: dict[str, Any]) -> None:
     )
 
     # We need a reference to the actual Tk root to schedule after() calls
-    tk_root: tk.Tk = root.winfo_toplevel()  # type: ignore[assignment]
+    toplevel_root: tk.Tk = root.winfo_toplevel()  # type: ignore[assignment]
 
     def set_running(is_running: bool) -> None:
         running_var.set(is_running)
@@ -286,7 +286,7 @@ def _build_transcriber(root: tk.Misc, defaults: dict[str, Any]) -> None:
 
     def _safe_split_drop(data: str) -> list[str]:
         try:
-            return list(tk_root.tk.splitlist(data))
+            return list(toplevel_root.tk.splitlist(data))
         except Exception:
             return [data]
 
@@ -325,7 +325,7 @@ def _build_transcriber(root: tk.Misc, defaults: dict[str, Any]) -> None:
 
         def worker() -> None:
             try:
-                tk_root.after(0, lambda: (set_running(True), set_status("Preparing model…")))
+                toplevel_root.after(0, lambda: (set_running(True), set_status("Preparing model…")))
 
                 setup_windows_cuda_dlls(
                     cublas_bin=defaults.get("cublas_bin"),
@@ -355,7 +355,7 @@ def _build_transcriber(root: tk.Misc, defaults: dict[str, Any]) -> None:
                     if save_after:
                         on_save()
 
-                tk_root.after(0, finish_ui)
+                toplevel_root.after(0, finish_ui)
             except Exception as e:
                 err_msg = str(e)
 
@@ -364,7 +364,7 @@ def _build_transcriber(root: tk.Misc, defaults: dict[str, Any]) -> None:
                     set_status("Failed.")
                     messagebox.showerror("Transcription failed", err_msg)
 
-                tk_root.after(0, show_error)
+                toplevel_root.after(0, show_error)
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -500,7 +500,7 @@ def _build_transcriber(root: tk.Misc, defaults: dict[str, Any]) -> None:
             save_btn.configure(
                 state="normal" if transcript_text.get("1.0", "end").strip() else "disabled"
             )
-        tk_root.after(300, poll_save_state)
+        toplevel_root.after(300, poll_save_state)
 
     poll_save_state()
 

@@ -365,11 +365,11 @@ class SubtitleConversionScreen(Screen):
                 result_path = convert_file(input_path, fmt, output_path)
                 preview_text = result_path.read_text(encoding="utf-8")
                 self.post_message(ConversionComplete(str(result_path)))
-                self.app.call_from_thread(
-                    lambda: self.query_one("#conv_preview", TextArea).__setattr__(
-                        "text", preview_text
-                    )
-                )
+
+                def update_preview() -> None:
+                    self.query_one("#conv_preview", TextArea).text = preview_text
+
+                self.app.call_from_thread(update_preview)
             except Exception as e:
                 self.post_message(ConversionError(str(e)))
 
